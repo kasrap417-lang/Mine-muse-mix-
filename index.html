@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Sync Hub</title>
+<!-- Google Identity Services SDK -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- YouTube Iframe API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+<!-- EmailJS SDK -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script type="text/javascript">
+  emailjs.init("FRZKb8jtLBK0g2_Kl");
+</script>
+<style>
+:root{--green:#1DB954;--purple:#8B5CF6;--orange:#FF7A1A;--red:#FF3D4F;--ink:#2A1B4D;--paper:#FFF8EE;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Nunito","Baloo 2","Trebuchet MS",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+.wrap{max-width:920px;margin:0 auto;padding:20px 16px 120px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{font-size:1.4rem;font-weight:900;display:flex;align-items:center;gap:8px}
+.logo i{width:34px;height:34px;border-radius:50%;background:conic-gradient(var(--green),var(--purple),var(--orange),var(--red),var(--green));display:inline-block;animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;cursor:pointer;color:#fff;transition:transform .15s}
+button:hover{transform:translateY(-2px) scale(1.04)}button:active{transform:scale(.95)}
+.b-g{background:var(--green)}.b-p{background:var(--purple)}.b-o{background:var(--orange)}.b-r{background:var(--red)}.b-i{background:var(--ink)}
+.hero{text-align:center;padding:20px 0}
+.hero h1{font-size:clamp(2rem,7vw,3.2rem);line-height:1.05;margin:0 0 12px;font-weight:900}
+.hero h1 span{display:inline-block;animation:bob 2.4s ease-in-out infinite}
+.hero h1 span:nth-child(2){animation-delay:.3s;color:var(--purple)}.hero h1 span:nth-child(3){animation-delay:.6s;color:var(--orange)}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-2deg)}}
+
+/* Services Grid */
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:20px 0}
+.service-card{background:var(--card);border-radius:24px;padding:20px;text-align:center;border:3px solid #eee;box-shadow:0 4px 12px rgba(0,0,0,0.03);display:flex;flex-direction:column;align-items:center;gap:10px}
+.service-icon{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;font-weight:900}
+.sc-inactive{font-size:0.75rem;background:#fff3cd;color:#856404;padding:3px 10px;border-radius:999px;font-weight:800;border:1px solid #ffeeba}
+
+/* Search & Tabs */
+.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+.tab-btn{background:#ddd;color:var(--ink);padding:8px 16px;border-radius:999px;font-weight:700;cursor:pointer}
+.tab-btn.active{background:var(--purple);color:#fff}
+
+.search-box{display:flex;gap:8px;margin:20px 0}
+.search-box input{flex:1;border:2px solid var(--purple);border-radius:999px;padding:12px 20px;font-size:1rem;outline:none}
+
+.player{background:var(--ink);color:#fff;border-radius:28px;padding:20px;margin-top:20px}
+.now{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.art{width:64px;height:64px;border-radius:18px;background-size:cover;background-position:center;background-color:#444}
+.yt-frame-container{width:100%;height:0;overflow:hidden;border-radius:16px;margin-bottom:12px;transition:height 0.3s}
+.yt-frame-container.active{height:220px}
+#ytplayer{width:100%;height:100%;border:0}
+
+.ctrl{display:flex;justify-content:center;gap:10px;margin-bottom:12px}
+ul.list{list-style:none;margin:0;padding:0;max-height:300px;overflow-y:auto}
+ul.list li{padding:10px 14px;border-radius:14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;background:#ffffff10}
+ul.list li:hover,ul.list li.cur{background:#ffffff2f}
+.auth-box{background:#fff;border-radius:20px;padding:20px;margin-bottom:20px;border:2px solid var(--purple)}
+input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;width:100%;margin-bottom:10px}
+.note{font-weight:700;margin:8px 0}.ok{color:#0f8a3b}.no{color:var(--red)}
+
+/* Support Chat Widget Styles */
+.fab{position:fixed;right:18px;bottom:18px;width:60px;height:60px;border-radius:50%;background:var(--purple);font-size:1.6rem;padding:0;box-shadow:0 6px 0 #5b36c9;z-index:999;cursor:pointer}
+.chat{position:fixed;right:18px;bottom:92px;width:min(320px,calc(100vw - 36px));background:#fff;border-radius:24px;border:3px solid var(--purple);display:none;flex-direction:column;overflow:hidden;z-index:999;box-shadow:0 10px 25px rgba(0,0,0,0.15)}
+.chat.open{display:flex}
+.chat h4{margin:0;padding:12px 16px;background:var(--purple);color:#fff}
+.msgs{padding:12px;height:220px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.m{max-width:85%;padding:8px 12px;border-radius:16px;background:#eee;font-size:0.9rem}
+.m.me{align-self:flex-end;background:var(--green);color:#fff}
+.m.admin-msg{background:var(--purple);color:#fff;align-self:flex-start}
+.join{padding:16px;display:flex;flex-direction:column;gap:8px}.join p{margin:0;font-size:0.9rem}
+.who{font-size:.7rem;opacity:0.8;margin-bottom:2px;font-weight:bold}
+#chatForm{display:flex;gap:6px;padding:10px;border-top:2px solid #eee}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo"><i></i>Music Sync Hub</div>
+  <div id="userAccountSection" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <div id="googleSignInButton"></div>
+    <button class="b-p" id="emailToggleBtn" style="padding:6px 14px; font-size:0.85rem;">Email Login</button>
+    <button class="b-g" id="spotifyLoginBtn" style="padding:6px 14px; font-size:0.85rem;">Connect Spotify</button>
+  </div>
+</header>
+
+<div id="emailAuthContainer" class="auth-box" hidden>
+  <h3>Email Authentication</h3>
+  <div id="step1Email">
+    <p>Enter your email address to receive a real login verification code:</p>
+    <input type="email" id="userEmailInput" placeholder="name@example.com">
+    <button class="b-g" id="sendCodeBtn">Send Verification Code</button>
+  </div>
+  <div id="step2Code" hidden>
+    <p>Enter the 6-digit verification code sent to your email:</p>
+    <input type="text" id="verificationCodeInput" placeholder="123456" maxlength="6">
+    <button class="b-p" id="verifyCodeBtn">Verify & Login</button>
+  </div>
+  <div class="note" id="authNote"></div>
+</div>
+
+<section class="hero">
+  <h1><span>Sync & Stream</span> <span>YouTube & Spotify</span> <span>Music</span></h1>
+</section>
+
+<!-- Services Status Overview -->
+<div class="services-grid">
+  <div class="service-card" style="border-color: var(--red);">
+    <div class="service-icon" style="background: var(--red);">▶</div>
+    <strong style="margin:0;">YouTube Music</strong>
+    <span style="font-size:0.8rem; color:#666;">Connected & Active</span>
+  </div>
+  <div class="service-card" style="border-color: var(--green);">
+    <div class="service-icon" style="background: var(--green);">♫</div>
+    <strong style="margin:0;">Spotify</strong>
+    <span style="font-size:0.8rem; color:#666;">API Integration Ready</span>
+  </div>
+  <div class="service-card" style="border-color: var(--orange);">
+    <div class="service-icon" style="background: var(--orange);">☁</div>
+    <strong style="margin:0;">SoundCloud</strong>
+    <span class="sc-inactive">موقتاً غیر فعال است</span>
+  </div>
+</div>
+
+<!-- Tabs & Search Section -->
+<div class="tabs">
+  <button class="tab-btn active" id="tabYt" onclick="switchSource('youtube')">YouTube Music</button>
+  <button class="tab-btn" id="tabSpot" onclick="switchSource('spotify')">Spotify Tracks</button>
+</div>
+
+<div class="search-box">
+  <input type="text" id="searchInput" placeholder="Search songs or artists...">
+  <button class="b-r" id="searchBtn">Search</button>
+</div>
+
+<h2>Player & Search Results</h2>
+<div class="player">
+  <div class="now">
+    <div class="art" id="trackArt"></div>
+    <div>
+      <strong id="title">Nothing playing</strong><br>
+      <small id="artist">Search and select a song above</small>
+    </div>
+  </div>
+  
+  <!-- کانتینر پلیر یوتیوب -->
+  <div class="yt-frame-container" id="ytContainer">
+    <div id="ytplayer"></div>
+  </div>
+  <!-- پلیر صوتی برای اسپاتیفای -->
+  <audio id="audioPlayer" style="width:100%; margin-top:8px; display:none;" controls></audio>
+
+  <div class="ctrl">
+    <button class="b-p" id="prev">⏮</button>
+    <button class="b-g" id="play">▶ / ⏸</button>
+    <button class="b-p" id="next">⏭</button>
+  </div>
+  
+  <ul class="list" id="list"></ul>
+</div>
+</div>
+
+<!-- Support Chat Widget -->
+<button class="fab" id="fab" aria-label="Open support chat">💬</button>
+<div class="chat" id="chat">
+  <h4 id="chatHead">Support Chat</h4>
+  <form id="joinForm" class="join">
+    <p>Enter a unique username to start chatting with support:</p>
+    <input id="joinName" placeholder="Your username (e.g. kasra)" autocomplete="off">
+    <div class="note" id="joinNote"></div>
+    <button class="b-g" type="submit">Enter Chat</button>
+  </form>
+  <div id="chatBody" hidden>
+    <div class="msgs" id="msgs"></div>
+    <form id="chatForm">
+      <input id="chatIn" placeholder="Type a message..." autocomplete="off">
+      <button class="b-g" type="submit">Send</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const CONFIG = {
+  GOOGLE_CLIENT_ID: "424353707491-kisk1431no86niahbg91agvv09shr3b3",
+  YOUTUBE_API_KEY: "AIzaSyDFBzg5E5C8jGgMomEnFj3tJUSlpjszshY",
+  SPOTIFY_CLIENT_ID: "B9710d08e2b74a628dcc89d6e03816db",
+  REDIRECT_URI: "https://kasrap417-lang.github.io/Mine-muse-mix-/"
+};
+
+let currentSource = "youtube"; // 'youtube' or 'spotify'
+let ytPlayer = null;
+let playlist = [];
+let currentIndex = -1;
+let spotifyAccessToken = localStorage.getItem("spotify_access_token") || "";
+
+function switchSource(source) {
+  currentSource = source;
+  document.getElementById("tabYt").className = source === "youtube" ? "tab-btn active" : "tab-btn";
+  document.getElementById("tabSpot").className = source === "spotify" ? "tab-btn active" : "tab-btn";
+  document.getElementById("searchInput").placeholder = source === "youtube" ? "Search songs or artists on YouTube..." : "Search tracks on Spotify...";
+}
+
+function onYouTubeIframeAPIReady() {
+  ytPlayer = new YT.Player('ytplayer', {
+    events: {
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.ENDED) {
+    playNext();
+  }
+}
+
+// Spotify Auth (Code Flow Handler)
+document.getElementById("spotifyLoginBtn").onclick = () => {
+  const scopes = "streaming user-read-private user-read-playback-state";
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}`;
+  window.location.href = authUrl;
+};
+
+// Check Spotify Code in URL on Load
+window.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (code) {
+    localStorage.setItem("spotify_auth_code", code);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    document.getElementById("spotifyLoginBtn").textContent = "✓ Spotify Connected";
+    document.getElementById("spotifyLoginBtn").style.background = "var(--green)";
+  } else if (localStorage.getItem("spotify_auth_code")) {
+    document.getElementById("spotifyLoginBtn").textContent = "✓ Spotify Connected";
+    document.getElementById("spotifyLoginBtn").style.background = "var(--green)";
+  }
+});
+
+// Search Router
+document.getElementById("searchBtn").onclick = async () => {
+  const query = document.getElementById("searchInput").value.trim();
+  if(!query) return;
+
+  if (currentSource === "youtube") {
+    searchYouTube(query);
+  } else {
+    searchSpotify(query);
+  }
+};
+
+async function searchYouTube(query) {
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.items) {
+      playlist = data.items.map(item => ({
+        type: 'youtube',
+        id: item.id.videoId,
+        title: item.snippet.title,
+        channel: item.snippet.channelTitle,
+        thumb: item.snippet.thumbnails.default.url
+      }));
+      renderList();
+    }
+  } catch(e) {
+    console.error(e);
+    alert("خطا در جستجوی یوتیوب.");
+  }
+}
+
+async function searchSpotify(query) {
+  if(!localStorage.getItem("spotify_auth_code")) {
+    alert("لطفاً ابتدا روی دکمه Connect Spotify بزنید تا به اکانت اسپاتیفای متصل شوید.");
+    return;
+  }
+  const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=12`;
+  try {
+    const res = await fetch(url, {
+      headers: { "Authorization": "Bearer " + spotifyAccessToken }
+    });
+    const data = await res.json();
+    if(data.tracks && data.tracks.items) {
+      playlist = data.tracks.items.map(item => ({
+        type: 'spotify',
+        id: item.id,
+        title: item.name,
+        channel: item.artists.map(a => a.name).join(', '),
+        thumb: item.album.images[0]?.url || "",
+        preview: item.preview_url
+      }));
+      renderList();
+    } else {
+      alert("لطفاً اتصال اسپاتیفای را مجدداً تأیید کنید.");
+    }
+  } catch(e) {
+    console.error(e);
+    alert("خطا در جستجوی اسپاتیفای.");
+  }
+}
+
+function renderList() {
+  const ul = document.getElementById("list");
+  ul.innerHTML = "";
+  playlist.forEach((track, i) => {
+    const li = document.createElement("li");
+    if(i === currentIndex) li.className = "cur";
+    li.innerHTML = `<span>${track.title}</span><small>${track.channel} (${track.type})</small>`;
+    li.onclick = () => playIndex(i);
+    ul.appendChild(li);
+  });
+}
+
+const audioPlayer = document.getElementById("audioPlayer");
+
+function playIndex(i) {
+  if(i < 0 || i >= playlist.length) return;
+  currentIndex = i;
+  const track = playlist[currentIndex];
+  document.getElementById("title").textContent = track.title;
+  document.getElementById("artist").textContent = track.channel;
+  document.getElementById("trackArt").style.backgroundImage = `url('${track.thumb}')`;
+
+  if(track.type === 'youtube') {
+    document.getElementById("ytContainer").classList.add("active");
+    audioPlayer.style.display = "none";
+    audioPlayer.pause();
+    if(ytPlayer && ytPlayer.loadVideoById) {
+      ytPlayer.loadVideoById(track.id);
+    }
+  } else if(track.type === 'spotify') {
+    document.getElementById("ytContainer").classList.remove("active");
+    if(ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+    if(track.preview) {
+      audioPlayer.style.display = "block";
+      audioPlayer.src = track.preview;
+      audioPlayer.play();
+    } else {
+      audioPlayer.style.display = "none";
+      alert("نمونه صوتی (Preview) برای این آهنگ اسپاتیفای موجود نیست.");
+    }
+  }
+  renderList();
+}
+
+function playNext() { playIndex(currentIndex + 1); }
+function playPrev() { playIndex(currentIndex - 1); }
+
+document.getElementById("play").onclick = () => {
+  const track = playlist[currentIndex];
+  if(track && track.type === 'spotify') {
+    if(audioPlayer.paused) audioPlayer.play();
+    else audioPlayer.pause();
+  } else {
+    if(!ytPlayer) return;
+    const state = ytPlayer.getPlayerState();
+    if(state === YT.PlayerState.PLAYING) ytPlayer.pauseVideo();
+    else ytPlayer.playVideo();
+  }
+};
+document.getElementById("next").onclick = playNext;
+document.getElementById("prev").onclick = playPrev;
+
+/* Authentication & EmailJS */
+window.onload = function () {
+  if (typeof google !== 'undefined') {
+    google.accounts.id.initialize({
+      client_id: CONFIG.GOOGLE_CLIENT_ID,
+      callback: (res) => {
+        const payload = JSON.parse(atob(res.credential.split('.')[1]));
+        document.getElementById("userAccountSection").innerHTML = `<span style="color:var(--green);font-weight:bold">✓ ${payload.name}</span>`;
+      }
+    });
+    google.accounts.id.renderButton(document.getElementById("googleSignInButton"), { theme: "outline", size: "large" });
+  }
+};
+
+let generatedOtp = "", pendingEmail = "";
+document.getElementById("emailToggleBtn").onclick = () => {
+  const box = document.getElementById("emailAuthContainer");
+  box.hidden = !box.hidden;
+};
+
+document.getElementById("sendCodeBtn").onclick = () => {
+  const email = document.getElementById("userEmailInput").value.trim();
+  const note = document.getElementById("authNote");
+  if(!email || !email.includes("@")){
+    note.className = "note no";
+    note.textContent = "لطفاً یک ایمیل معتبر وارد کنید.";
+    return;
+  }
+  pendingEmail = email;
+  generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  note.className = "note";
+  note.textContent = "⏳ در حال ارسال ایمیل واقعی به " + email + "...";
+
+  emailjs.send("service_6t0k61k", "template_2y9koxq", { to_email: email, passcode: generatedOtp })
+    .then(() => {
+       note.className = "note ok";
+       note.textContent = `✅ کد تأیید با موفقیت به ایمیل ${email} ارسال شد!`;
+       document.getElementById("step1Email").hidden = true;
+       document.getElementById("step2Code").hidden = false;
+    }, () => {
+       note.className = "note no";
+       note.textContent = "❌ خطا در ارسال ایمیل. لطفاً اتصال اینترنت را بررسی کنید.";
+    });
+};
+
+document.getElementById("verifyCodeBtn").onclick = () => {
+  const code = document.getElementById("verificationCodeInput").value.trim();
+  const note = document.getElementById("authNote");
+  if(code === generatedOtp && code !== ""){
+    note.className = "note ok";
+    note.textContent = "با موفقیت از طریق ایمیل وارد شدید!";
+    setTimeout(() => {
+      document.getElementById("emailAuthContainer").hidden = true;
+      document.getElementById("userAccountSection").innerHTML = `<span style="font-weight:800; color:var(--purple);">✓ ${pendingEmail}</span>`;
+    }, 1000);
+  } else {
+    note.className = "note no";
+    note.textContent = "کد تأیید نادرست است.";
+  }
+};
+
+/* Support Chat */
+const activeUsernames = new Set(["admin1", "admin2", "admin3", "admin4", "admin5", "support", "admin"]);
+const adminUsernames = ["admin1", "admin2", "admin3", "admin4", "admin5"];
+let currentUser = null;
+
+document.getElementById("fab").onclick = () => document.getElementById("chat").classList.toggle("open");
+
+function addMessage(text, className, senderName){
+  const m = document.createElement("div");
+  m.className = "m " + className;
+  if(senderName){
+    const w = document.createElement("div");
+    w.className = "who";
+    w.textContent = senderName;
+    m.appendChild(w);
+  }
+  m.appendChild(document.createTextNode(text));
+  document.getElementById("msgs").appendChild(m);
+  document.getElementById("msgs").scrollTop = 1e6;
+}
+
+document.getElementById("joinForm").onsubmit = e => {
+  e.preventDefault();
+  const username = document.getElementById("joinName").value.trim();
+  const lowerName = username.toLowerCase();
+  const note = document.getElementById("joinNote");
+
+  if(username.length < 3){
+    note.className = "note no";
+    note.textContent = "Username must be at least 3 characters.";
+    return;
+  }
+  if(activeUsernames.has(lowerName) && !adminUsernames.includes(lowerName)){
+    note.className = "note no";
+    note.textContent = "This username is already taken.";
+    return;
+  }
+
+  activeUsernames.add(lowerName);
+  const isAdmin = adminUsernames.includes(lowerName);
+  currentUser = { name: username, isAdmin: isAdmin };
+
+  document.getElementById("joinForm").hidden = true;
+  document.getElementById("chatBody").hidden = false;
+  document.getElementById("msgs").innerHTML = "";
+
+  if(isAdmin){
+    document.getElementById("chatHead").textContent = "Admin Panel · " + username;
+    addMessage("Welcome to Admin Panel.", "admin-msg", "System");
+  } else {
+    document.getElementById("chatHead").textContent = "Support · " + username;
+    addMessage("Hello " + username + "! How can our support team help you today?", "admin-msg", "Support Team");
+  }
+};
+
+document.getElementById("chatForm").onsubmit = e => {
+  e.preventDefault();
+  const text = document.getElementById("chatIn").value.trim();
+  if(!text || !currentUser) return;
+
+  if(currentUser.isAdmin){
+    addName(text, "me", "Admin (" + currentUser.name + ")");
+  } else {
+    addMessage(text, "me", currentUser.name);
+    setTimeout(() => {
+      addMessage("Thanks for your message! An admin will review it soon.", "admin-msg", "Support Team");
+    }, 1000);
+  }
+  document.getElementById("chatIn").value = "";
+};
+</script>
+</body>
+</html>
