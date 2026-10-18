@@ -235,13 +235,14 @@ function updateSpotifyUI(connected) {
   }
 }
 
+// دکمه اتصال به اسپاتیفای با آدرس مستقیم و ایمن HTTPS
 document.getElementById("spotifyLoginBtn").onclick = () => {
   const scopes = "user-read-private user-read-playback-state";
-  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=https://kasrap417-lang.github.io/Mine-muse-mix-/&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
   window.location.href = authUrl;
 };
 
-// Handle Spotify OAuth Callback instantly
+// پردازش توکن بازگشتی از اسپاتیفای بلافاصله پیش از لود صفحه
 (function() {
   const hash = window.location.hash.substring(1);
   if (hash) {
