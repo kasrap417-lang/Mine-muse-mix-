@@ -38,7 +38,7 @@ button:hover{transform:translateY(-2px) scale(1.04)}button:active{transform:scal
 .sc-inactive{font-size:0.75rem;background:#fff3cd;color:#856404;padding:3px 10px;border-radius:999px;font-weight:800;border:1px solid #ffeeba}
 
 /* Search & Tabs */
-.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
 .tab-btn{background:#ddd;color:var(--ink);padding:8px 16px;border-radius:999px;font-weight:700;cursor:pointer}
 .tab-btn.active{background:var(--purple);color:#fff}
 
@@ -127,12 +127,13 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
 
 <!-- Tabs & Search Section -->
 <div class="tabs">
-  <button class="tab-btn active" id="tabYt" onclick="switchSource('youtube')">YouTube Music</button>
+  <button class="tab-btn active" id="tabYt" onclick="switchSource('youtube')">YouTube Tracks</button>
   <button class="tab-btn" id="tabSpot" onclick="switchSource('spotify')">Spotify Tracks</button>
+  <button class="tab-btn" id="tabMix" onclick="switchSource('mix')">میکس ترک</button>
 </div>
 
 <div class="search-box">
-  <input type="text" id="searchInput" placeholder="Search songs or artists...">
+  <input type="text" id="searchInput" placeholder="Search songs or artists on YouTube...">
   <button class="b-r" id="searchBtn">Search</button>
 </div>
 
@@ -197,7 +198,15 @@ function switchSource(source) {
   currentSource = source;
   document.getElementById("tabYt").className = source === "youtube" ? "tab-btn active" : "tab-btn";
   document.getElementById("tabSpot").className = source === "spotify" ? "tab-btn active" : "tab-btn";
-  document.getElementById("searchInput").placeholder = source === "youtube" ? "Search songs or artists on YouTube..." : "Search tracks on Spotify...";
+  document.getElementById("tabMix").className = source === "mix" ? "tab-btn active" : "tab-btn";
+  
+  if (source === "youtube") {
+    document.getElementById("searchInput").placeholder = "Search songs or artists on YouTube...";
+  } else if (source === "spotify") {
+    document.getElementById("searchInput").placeholder = "Search tracks on Spotify...";
+  } else {
+    document.getElementById("searchInput").placeholder = "Search mixed tracks (YouTube & Spotify)...";
+  }
 }
 
 function onYouTubeIframeAPIReady() {
@@ -226,28 +235,28 @@ function updateSpotifyUI(connected) {
   }
 }
 
-// Spotify Fix: Code Auth
 document.getElementById("spotifyLoginBtn").onclick = () => {
   const scopes = "user-read-private user-read-playback-state";
-  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
   window.location.href = authUrl;
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  // Check URL Code
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get("code");
-  if (code) {
-    localStorage.setItem("spotify_auth_code", code);
-    window.history.replaceState({}, document.title, window.location.pathname);
-    updateSpotifyUI(true);
-  } else if (localStorage.getItem("spotify_auth_code")) {
+  const hash = window.location.hash.substring(1);
+  if (hash) {
+    const params = new URLSearchParams(hash);
+    const token = params.get("access_token");
+    if (token) {
+      localStorage.setItem("spotify_access_token", token);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      updateSpotifyUI(true);
+    }
+  } else if (localStorage.getItem("spotify_access_token")) {
     updateSpotifyUI(true);
   } else {
     updateSpotifyUI(false);
   }
 
-  // Restore Email/Google Login state without wiping header buttons
   const savedUser = localStorage.getItem("app_user_login");
   if (savedUser) {
     document.getElementById("loggedInUserBadge").textContent = "✓ " + savedUser;
@@ -260,13 +269,15 @@ document.getElementById("searchBtn").onclick = async () => {
 
   if (currentSource === "youtube") {
     searchYouTube(query);
-  } else {
+  } else if (currentSource === "spotify") {
     searchSpotify(query);
+  } else if (currentSource === "mix") {
+    searchMix(query);
   }
 };
 
 async function searchYouTube(query) {
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -286,18 +297,20 @@ async function searchYouTube(query) {
 }
 
 async function searchSpotify(query) {
-  const authCode = localStorage.getItem("spotify_auth_code");
-  if(!authCode) {
+  const token = localStorage.getItem("spotify_access_token");
+  if(!token) {
     alert("لطفاً ابتدا روی دکمه Connect Spotify بزنید تا به اسپاتیفای متصل شوید.");
     return;
   }
-  const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=12`;
+  const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`;
   try {
     const res = await fetch(url, {
-      headers: { "Authorization": "Bearer " + authCode }
+      headers: { "Authorization": "Bearer " + token }
     });
     
     if (res.status === 401) {
+      localStorage.removeItem("spotify_access_token");
+      updateSpotifyUI(false);
       alert("اعتبار اتصال اسپاتیفای منقضی شده است. لطفاً دوباره Connect Spotify را بزنید.");
       return;
     }
@@ -318,6 +331,54 @@ async function searchSpotify(query) {
     console.error(e);
     alert("خطا در جستجوی اسپاتیفای.");
   }
+}
+
+async function searchMix(query) {
+  let ytTracks = [];
+  let spotTracks = [];
+
+  // 1. Fetch YouTube
+  try {
+    const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
+    const ytRes = await fetch(ytUrl);
+    const ytData = await ytRes.json();
+    if(ytData.items) {
+      ytTracks = ytData.items.map(item => ({
+        type: 'youtube',
+        id: item.id.videoId,
+        title: item.snippet.title,
+        channel: item.snippet.channelTitle,
+        thumb: item.snippet.thumbnails.default.url
+      }));
+    }
+  } catch(e) { console.error("YT Mix error", e); }
+
+  // 2. Fetch Spotify (if token available)
+  const token = localStorage.getItem("spotify_access_token");
+  if(token) {
+    try {
+      const spotUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=6`;
+      const spotRes = await fetch(spotUrl, { headers: { "Authorization": "Bearer " + token } });
+      const spotData = await spotRes.json();
+      if(spotData.tracks && spotData.tracks.items) {
+        spotTracks = spotData.tracks.items.map(item => ({
+          type: 'spotify',
+          id: item.id,
+          title: item.name,
+          channel: item.artists.map(a => a.name).join(', '),
+          thumb: item.album.images[0]?.url || "",
+          preview: item.preview_url
+        }));
+      }
+    } catch(e) { console.error("Spotify Mix error", e); }
+  }
+
+  // Combine both playlists into a single Mix
+  playlist = [...ytTracks, ...spotTracks];
+  if(playlist.length === 0) {
+    alert("نتیجه‌ای برای جستجوی میکس پیدا نشد.");
+  }
+  renderList();
 }
 
 function renderList() {
