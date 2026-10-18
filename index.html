@@ -241,17 +241,22 @@ document.getElementById("spotifyLoginBtn").onclick = () => {
   window.location.href = authUrl;
 };
 
-window.addEventListener("DOMContentLoaded", () => {
+// Handle Spotify OAuth Callback safely on page load
+(function() {
   const hash = window.location.hash.substring(1);
   if (hash) {
     const params = new URLSearchParams(hash);
     const token = params.get("access_token");
     if (token) {
       localStorage.setItem("spotify_access_token", token);
+      // Clean up the URL hash without triggering a reload loop or white screen
       window.history.replaceState({}, document.title, window.location.pathname);
-      updateSpotifyUI(true);
     }
-  } else if (localStorage.getItem("spotify_access_token")) {
+  }
+})();
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (localStorage.getItem("spotify_access_token")) {
     updateSpotifyUI(true);
   } else {
     updateSpotifyUI(false);
@@ -533,7 +538,7 @@ document.getElementById("joinForm").onsubmit = e => {
     return;
   }
   if(activeUsernames.has(lowerName) && !adminUsernames.includes(lowerName)){
-    note.className = "note no";
+    note.className, "note no";
     note.textContent = "این نام کاربری تکراری است.";
     return;
   }
@@ -557,7 +562,7 @@ document.getElementById("joinForm").onsubmit = e => {
 
 document.getElementById("chatForm").onsubmit = e => {
   e.preventDefault();
-  const text = document.getElementById("chatIn").value.trim();
+  const text = document.getElementById("chatIn").value.trims();
   if(!text || !currentUser) return;
 
   if(currentUser.isAdmin){
