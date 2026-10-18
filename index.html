@@ -80,7 +80,6 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
 <header>
   <div class="logo"><i></i>Music Sync Hub</div>
   <div id="userAccountSection" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <div id="loggedInUserBadge" style="font-weight:bold; color:var(--purple);"></div>
     <div id="googleSignInButton"></div>
     <button class="b-p" id="emailToggleBtn" style="padding:6px 14px; font-size:0.85rem;">Email Login</button>
     <button class="b-g" id="spotifyLoginBtn" style="padding:6px 14px; font-size:0.85rem;">Connect Spotify</button>
@@ -116,7 +115,7 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
   <div class="service-card" style="border-color: var(--green);">
     <div class="service-icon" style="background: var(--green);">♫</div>
     <strong style="margin:0;">Spotify</strong>
-    <span style="font-size:0.8rem; color:#666;" id="spotifyStatusText">Click Connect to Authorize</span>
+    <span style="font-size:0.8rem; color:#666;">API Integration Ready</span>
   </div>
   <div class="service-card" style="border-color: var(--orange);">
     <div class="service-icon" style="background: var(--orange);">☁</div>
@@ -127,13 +126,13 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
 
 <!-- Tabs & Search Section -->
 <div class="tabs">
-  <button class="tab-btn active" id="tabYt" onclick="switchSource('youtube')">YouTube Tracks</button>
+  <button class="tab-btn active" id="tabYt" onclick="switchSource('youtube')">YouTube Music</button>
   <button class="tab-btn" id="tabSpot" onclick="switchSource('spotify')">Spotify Tracks</button>
   <button class="tab-btn" id="tabMix" onclick="switchSource('mix')">Mix Tracks</button>
 </div>
 
 <div class="search-box">
-  <input type="text" id="searchInput" placeholder="Search songs or artists on YouTube...">
+  <input type="text" id="searchInput" placeholder="Search songs or artists...">
   <button class="b-r" id="searchBtn">Search</button>
 </div>
 
@@ -193,6 +192,7 @@ let currentSource = "youtube";
 let ytPlayer = null;
 let playlist = [];
 let currentIndex = -1;
+let spotifyAccessToken = localStorage.getItem("spotify_access_token") || "";
 
 function switchSource(source) {
   currentSource = source;
@@ -200,9 +200,9 @@ function switchSource(source) {
   document.getElementById("tabSpot").className = source === "spotify" ? "tab-btn active" : "tab-btn";
   document.getElementById("tabMix").className = source === "mix" ? "tab-btn active" : "tab-btn";
   
-  if (source === "youtube") {
+  if(source === "youtube") {
     document.getElementById("searchInput").placeholder = "Search songs or artists on YouTube...";
-  } else if (source === "spotify") {
+  } else if(source === "spotify") {
     document.getElementById("searchInput").placeholder = "Search tracks on Spotify...";
   } else {
     document.getElementById("searchInput").placeholder = "Search mixed tracks (YouTube & Spotify)...";
@@ -221,45 +221,25 @@ function onPlayerStateChange(event) {
   }
 }
 
-function updateSpotifyUI(connected) {
-  const btn = document.getElementById("spotifyLoginBtn");
-  const status = document.getElementById("spotifyStatusText");
-  if (connected) {
-    btn.textContent = "✓ Spotify Connected";
-    btn.style.background = "var(--green)";
-    if(status) status.textContent = "Connected & Active";
-  } else {
-    btn.textContent = "Connect Spotify";
-    btn.style.background = "var(--green)";
-    if(status) status.textContent = "Click Connect to Authorize";
-  }
-}
-
 document.getElementById("spotifyLoginBtn").onclick = () => {
-  const scopes = "user-read-private user-read-playback-state";
-  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
+  const scopes = "streaming user-read-private user-read-playback-state";
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}`;
   window.location.href = authUrl;
 };
 
 window.addEventListener("DOMContentLoaded", () => {
   const hash = window.location.hash.substring(1);
-  if (hash) {
-    const params = new URLSearchParams(hash);
-    const token = params.get("access_token");
-    if (token) {
-      localStorage.setItem("spotify_access_token", token);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      updateSpotifyUI(true);
-    }
-  } else if (localStorage.getItem("spotify_access_token")) {
-    updateSpotifyUI(true);
-  } else {
-    updateSpotifyUI(false);
-  }
-
-  const savedUser = localStorage.getItem("app_user_login");
-  if (savedUser) {
-    document.getElementById("loggedInUserBadge").textContent = "✓ " + savedUser;
+  const params = new URLSearchParams(hash);
+  const token = params.get("access_token");
+  if (token) {
+    spotifyAccessToken = token;
+    localStorage.setItem("spotify_access_token", token);
+    window.location.hash = "";
+    document.getElementById("spotifyLoginBtn").textContent = "✓ Spotify Connected";
+    document.getElementById("spotifyLoginBtn").style.background = "var(--green)";
+  } else if (spotifyAccessToken) {
+    document.getElementById("spotifyLoginBtn").textContent = "✓ Spotify Connected";
+    document.getElementById("spotifyLoginBtn").style.background = "var(--green)";
   }
 });
 
@@ -297,24 +277,15 @@ async function searchYouTube(query) {
 }
 
 async function searchSpotify(query) {
-  const token = localStorage.getItem("spotify_access_token");
-  if(!token) {
-    alert("لطفاً ابتدا روی دکمه Connect Spotify بزنید تا به اسپاتیفای متصل شوید.");
+  if(!spotifyAccessToken) {
+    alert("لطفاً ابتدا روی دکمه Connect Spotify بزنید تا به اکانت اسپاتیفای متصل شوید.");
     return;
   }
   const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`;
   try {
     const res = await fetch(url, {
-      headers: { "Authorization": "Bearer " + token }
+      headers: { "Authorization": "Bearer " + spotifyAccessToken }
     });
-    
-    if (res.status === 401) {
-      localStorage.removeItem("spotify_access_token");
-      updateSpotifyUI(false);
-      alert("اعتبار اتصال اسپاتیفای منقضی شده است. لطفاً دوباره Connect Spotify را بزنید.");
-      return;
-    }
-
     const data = await res.json();
     if(data.tracks && data.tracks.items) {
       playlist = data.tracks.items.map(item => ({
@@ -326,10 +297,13 @@ async function searchSpotify(query) {
         preview: item.preview_url
       }));
       renderList();
+    } else if(res.status === 401) {
+      alert("توکن اسپاتیفای منقضی شده است. لطفاً مجدداً Connect Spotify را بزنید.");
+      localStorage.removeItem("spotify_access_token");
+      spotifyAccessToken = "";
     }
   } catch(e) {
     console.error(e);
-    alert("خطا در جستجوی اسپاتیفای.");
   }
 }
 
@@ -338,7 +312,7 @@ async function searchMix(query) {
   let spotTracks = [];
 
   try {
-    const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
+    const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=5&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
     const ytRes = await fetch(ytUrl);
     const ytData = await ytRes.json();
     if(ytData.items) {
@@ -350,13 +324,12 @@ async function searchMix(query) {
         thumb: item.snippet.thumbnails.default.url
       }));
     }
-  } catch(e) { console.error("YT Mix error", e); }
+  } catch(e) { console.error(e); }
 
-  const token = localStorage.getItem("spotify_access_token");
-  if(token) {
+  if(spotifyAccessToken) {
     try {
-      const spotUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=6`;
-      const spotRes = await fetch(spotUrl, { headers: { "Authorization": "Bearer " + token } });
+      const spotUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=5`;
+      const spotRes = await fetch(spotUrl, { headers: { "Authorization": "Bearer " + spotifyAccessToken } });
       const spotData = await spotRes.json();
       if(spotData.tracks && spotData.tracks.items) {
         spotTracks = spotData.tracks.items.map(item => ({
@@ -368,13 +341,10 @@ async function searchMix(query) {
           preview: item.preview_url
         }));
       }
-    } catch(e) { console.error("Spotify Mix error", e); }
+    } catch(e) { console.error(e); }
   }
 
   playlist = [...ytTracks, ...spotTracks];
-  if(playlist.length === 0) {
-    alert("نتیجه‌ای برای جستجوی میکس پیدا نشد.");
-  }
   renderList();
 }
 
@@ -444,8 +414,7 @@ window.onload = function () {
       client_id: CONFIG.GOOGLE_CLIENT_ID,
       callback: (res) => {
         const payload = JSON.parse(atob(res.credential.split('.')[1]));
-        document.getElementById("loggedInUserBadge").textContent = "✓ " + payload.name;
-        localStorage.setItem("app_user_login", payload.name);
+        document.getElementById("userAccountSection").innerHTML = `<span style="color:var(--green);font-weight:bold">✓ ${payload.name}</span>`;
       }
     });
     google.accounts.id.renderButton(document.getElementById("googleSignInButton"), { theme: "outline", size: "large" });
@@ -489,10 +458,9 @@ document.getElementById("verifyCodeBtn").onclick = () => {
   if(code === generatedOtp && code !== ""){
     note.className = "note ok";
     note.textContent = "ورود موفق!";
-    localStorage.setItem("app_user_login", pendingEmail);
-    document.getElementById("loggedInUserBadge").textContent = "✓ " + pendingEmail;
     setTimeout(() => {
       document.getElementById("emailAuthContainer").hidden = true;
+      document.getElementById("userAccountSection").innerHTML = `<span style="font-weight:800; color:var(--purple);">✓ ${pendingEmail}</span>`;
     }, 1000);
   } else {
     note.className = "note no";
@@ -549,23 +517,4 @@ document.getElementById("joinForm").onsubmit = e => {
   if(isAdmin){
     document.getElementById("chatHead").textContent = "پنل ادمین · " + username;
     addMessage("خوش آمدید ادمین.", "admin-msg", "سیستم");
-  } else {
-    document.getElementById("chatHead").textContent = "پشتیبانی · " + username;
-    addMessage("سلام " + username + "! چطور کمکتان کنیم؟", "admin-msg", "تیم پشتیبانی");
   }
-};
-
-document.getElementById("chatForm").onsubmit = e => {
-  e.preventDefault();
-  const text = document.getElementById("chatIn").value.trim();
-  if(!text || !currentUser) return;
-
-  if(currentUser.isAdmin){
-    addMessage(text, "me", "ادمین (" + currentUser.name + ")");
-  } else {
-    addMessage(text, "me", currentUser.name);
-    setTimeout(() => {
-      addMessage("پیام شما دریافت شد!", "admin-msg", "تیم پشتیبانی");
-    }, 1000);
-  }
-  document
