@@ -185,7 +185,7 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
 const CONFIG = {
   GOOGLE_CLIENT_ID: "424353707491-kisk1431no86niahbg91agvv09shr3b3",
   YOUTUBE_API_KEY: "AIzaSyDFBzg5E5C8jGgMomEnFj3tJUSlpjszshY",
-  SPOTIFY_CLIENT_ID: "B9710d08e2b74a628dcc89d6e03816db",
+  SPOTIFY_CLIENT_ID: "7895f4646322436cb7be74e3393ea1d7",
   REDIRECT_URI: "https://kasrap417-lang.github.io/Mine-muse-mix-/"
 };
 
@@ -235,6 +235,7 @@ function updateSpotifyUI(connected) {
   }
 }
 
+// Direct Implicit Token Auth Flow for Static Web Hosting
 document.getElementById("spotifyLoginBtn").onclick = () => {
   const scopes = "user-read-private user-read-playback-state";
   const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
