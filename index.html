@@ -80,6 +80,7 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
 <header>
   <div class="logo"><i></i>Music Sync Hub</div>
   <div id="userAccountSection" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <div id="loggedInUserBadge" style="font-weight:bold; color:var(--purple);"></div>
     <div id="googleSignInButton"></div>
     <button class="b-p" id="emailToggleBtn" style="padding:6px 14px; font-size:0.85rem;">Email Login</button>
     <button class="b-g" id="spotifyLoginBtn" style="padding:6px 14px; font-size:0.85rem;">Connect Spotify</button>
@@ -211,10 +212,6 @@ function onPlayerStateChange(event) {
   }
 }
 
-function getSpotifyToken() {
-  return localStorage.getItem("spotify_access_token");
-}
-
 function updateSpotifyUI(connected) {
   const btn = document.getElementById("spotifyLoginBtn");
   const status = document.getElementById("spotifyStatusText");
@@ -229,30 +226,31 @@ function updateSpotifyUI(connected) {
   }
 }
 
-// Redirect to Spotify Auth with show_dialog=true to allow account switching
+// Spotify Fix: Code Auth
 document.getElementById("spotifyLoginBtn").onclick = () => {
   const scopes = "user-read-private user-read-playback-state";
-  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CONFIG.SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&show_dialog=true`;
   window.location.href = authUrl;
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  const hash = window.location.hash.substring(1);
-  if (hash) {
-    const params = new URLSearchParams(hash);
-    const token = params.get("access_token");
-    if (token) {
-      localStorage.setItem("spotify_access_token", token);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      updateSpotifyUI(true);
-      return;
-    }
-  }
-
-  if (getSpotifyToken()) {
+  // Check URL Code
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get("code");
+  if (code) {
+    localStorage.setItem("spotify_auth_code", code);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    updateSpotifyUI(true);
+  } else if (localStorage.getItem("spotify_auth_code")) {
     updateSpotifyUI(true);
   } else {
     updateSpotifyUI(false);
+  }
+
+  // Restore Email/Google Login state without wiping header buttons
+  const savedUser = localStorage.getItem("app_user_login");
+  if (savedUser) {
+    document.getElementById("loggedInUserBadge").textContent = "✓ " + savedUser;
   }
 });
 
@@ -288,21 +286,19 @@ async function searchYouTube(query) {
 }
 
 async function searchSpotify(query) {
-  const token = getSpotifyToken();
-  if(!token) {
+  const authCode = localStorage.getItem("spotify_auth_code");
+  if(!authCode) {
     alert("لطفاً ابتدا روی دکمه Connect Spotify بزنید تا به اسپاتیفای متصل شوید.");
     return;
   }
   const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=12`;
   try {
     const res = await fetch(url, {
-      headers: { "Authorization": "Bearer " + token }
+      headers: { "Authorization": "Bearer " + authCode }
     });
     
     if (res.status === 401) {
-      localStorage.removeItem("spotify_access_token");
-      updateSpotifyUI(false);
-      alert("اعتبار اتصال اسپاتیفای تمام شده است. لطفاً مجدداً دکمه Connect Spotify را بزنید.");
+      alert("اعتبار اتصال اسپاتیفای منقضی شده است. لطفاً دوباره Connect Spotify را بزنید.");
       return;
     }
 
@@ -320,7 +316,7 @@ async function searchSpotify(query) {
     }
   } catch(e) {
     console.error(e);
-    alert("خطا در برقراری ارتباط با اسپاتیفای.");
+    alert("خطا در جستجوی اسپاتیفای.");
   }
 }
 
@@ -390,7 +386,8 @@ window.onload = function () {
       client_id: CONFIG.GOOGLE_CLIENT_ID,
       callback: (res) => {
         const payload = JSON.parse(atob(res.credential.split('.')[1]));
-        document.getElementById("userAccountSection").innerHTML = `<span style="color:var(--green);font-weight:bold">✓ ${payload.name}</span>`;
+        document.getElementById("loggedInUserBadge").textContent = "✓ " + payload.name;
+        localStorage.setItem("app_user_login", payload.name);
       }
     });
     google.accounts.id.renderButton(document.getElementById("googleSignInButton"), { theme: "outline", size: "large" });
@@ -434,9 +431,10 @@ document.getElementById("verifyCodeBtn").onclick = () => {
   if(code === generatedOtp && code !== ""){
     note.className = "note ok";
     note.textContent = "ورود موفق!";
+    localStorage.setItem("app_user_login", pendingEmail);
+    document.getElementById("loggedInUserBadge").textContent = "✓ " + pendingEmail;
     setTimeout(() => {
       document.getElementById("emailAuthContainer").hidden = true;
-      document.getElementById("userAccountSection").innerHTML = `<span style="font-weight:800; color:var(--purple);">✓ ${pendingEmail}</span>`;
     }, 1000);
   } else {
     note.className = "note no";
