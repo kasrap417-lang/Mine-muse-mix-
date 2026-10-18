@@ -129,7 +129,7 @@ input{font:inherit;border:2px solid #ddd;border-radius:999px;padding:10px 16px;w
 <div class="tabs">
   <button class="tab-btn active" id="tabYt" onclick="switchSource('youtube')">YouTube Tracks</button>
   <button class="tab-btn" id="tabSpot" onclick="switchSource('spotify')">Spotify Tracks</button>
-  <button class="tab-btn" id="tabMix" onclick="switchSource('mix')">میکس ترک</button>
+  <button class="tab-btn" id="tabMix" onclick="switchSource('mix')">Mix Tracks</button>
 </div>
 
 <div class="search-box">
@@ -337,7 +337,6 @@ async function searchMix(query) {
   let ytTracks = [];
   let spotTracks = [];
 
-  // 1. Fetch YouTube
   try {
     const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(query)}&type=video&key=${CONFIG.YOUTUBE_API_KEY}`;
     const ytRes = await fetch(ytUrl);
@@ -353,7 +352,6 @@ async function searchMix(query) {
     }
   } catch(e) { console.error("YT Mix error", e); }
 
-  // 2. Fetch Spotify (if token available)
   const token = localStorage.getItem("spotify_access_token");
   if(token) {
     try {
@@ -373,7 +371,6 @@ async function searchMix(query) {
     } catch(e) { console.error("Spotify Mix error", e); }
   }
 
-  // Combine both playlists into a single Mix
   playlist = [...ytTracks, ...spotTracks];
   if(playlist.length === 0) {
     alert("نتیجه‌ای برای جستجوی میکس پیدا نشد.");
